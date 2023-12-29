@@ -1,6 +1,8 @@
 import hashlib, ecdsa, base58, qrcode, textwrap
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm
+from tkinter import messagebox
+import ttkbootstrap as ttk
 
 
 def generate_key_pair() -> tuple:
@@ -22,7 +24,8 @@ def generate_key_pair() -> tuple:
     address_str = base58.b58encode(address_bin).decode()
     return (private_key.to_string().hex(), public_key.to_string().hex(), address_str)
 
-def creat_paperwallet(key_pair: tuple, file_name: str) -> None:
+
+def generate_paperwallet(key_pair: tuple, file_name: str) -> None:
     pdf = canvas.Canvas(file_name)
 
     qr_address = qrcode.make(key_pair[2])
@@ -47,9 +50,61 @@ def creat_paperwallet(key_pair: tuple, file_name: str) -> None:
     pdf.save()
 
 
+class XDAGPaperWalletGeneratorUI(ttk.Frame):
+    
+    def __init__(self, root, **kwargs) -> None:
+        super().__init__(root, **kwargs)
+
+        self.key_pair = None
+        self.paper_wallet = None
+
+        ttk.Label(root, text="Address", font=("", 16))\
+            .grid(row=0, column=0, padx=5, pady=5)
+
+        self.address_text = ttk.Entry(root, state="readonly", width=38)
+        self.address_text.grid(row=1, column=0, padx=5, pady=5)
+
+        ttk.Label(root, text="Private Key", font=("", 16))\
+            .grid(row=2, column=0, padx=5, pady=5)
+
+        ttk.Button(root, text="Generate", width=10, command=self.generate_key_pair_and_update_screen)\
+            .grid(row=2, column=1, padx=5, pady=5)
+
+        self.key_text = ttk.Entry(root, state="readonly", width=38)
+        self.key_text.grid(row=3, column=0, padx=5, pady=5)
+
+        ttk.Button(root, text="Save", width=10, command=self.save_as_paper_wallet)\
+            .grid(row=3, column=1, padx=5, pady=5)
+
+
+    def generate_key_pair_and_update_screen(self) -> None:
+        self.key_pair = generate_key_pair()
+        self.address_text.config(state="normal")
+        self.address_text.delete(0, "end")
+        self.address_text.insert(0, self.key_pair[2])
+        self.address_text.config(state="readonly")
+        self.key_text.config(state="normal")
+        self.key_text.delete(0, "end")
+        self.key_text.insert(0, self.key_pair[0])
+        self.key_text.config(state="readonly")
+
+    
+    def save_as_paper_wallet(self):
+        if self.key_pair == None:
+            self.generate_key_pair_and_update_screen()
+        generate_paperwallet(self.key_pair, "XDAG Paper Wallet.pdf")
+        messagebox.showinfo(message="Save as ./XDAG Paper Wallet.pdf")
+        
+
+
+
+
+def main() -> None:
+    ui = ttk.Window("XDAG Paper Wallet Generator")
+
+    xdag_ui = XDAGPaperWalletGeneratorUI(ui)
+    xdag_ui.mainloop()
+
+
 if __name__ == "__main__":
-    key_pair = generate_key_pair()
-    print(key_pair[0])
-    print(key_pair[1])
-    print(key_pair[2])
-    creat_paperwallet(key_pair, "paper wallet.pdf")
+    main()

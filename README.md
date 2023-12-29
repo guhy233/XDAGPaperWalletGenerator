@@ -10,7 +10,9 @@
 - base58
 - qrcode
 - reportlab
+- tkinter
+- ttkbootstrap
 
 ```
-pip install ecdsa, base58, qrcode, reportlab
+pip install ecdsa, base58, qrcode, reportlab, tkinter, ttkbootstrap
 ```

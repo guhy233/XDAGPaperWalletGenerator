@@ -2,7 +2,7 @@
 
 ## How to run
 
-1.Python 3.9
+1.Install Python 3.9
 
 2.libraries:
 
@@ -14,5 +14,5 @@
 - ttkbootstrap
 
 ```
-pip install ecdsa, base58, qrcode, reportlab, tkinter, ttkbootstrap
+pip install -r requirements.txt
 ```

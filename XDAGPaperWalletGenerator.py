@@ -1,7 +1,13 @@
-import hashlib, ecdsa, base58, qrcode, textwrap
+import hashlib
+import ecdsa
+import base58
+import textwrap
+import qrcode
 from reportlab.pdfgen import canvas
+from re import match
 from reportlab.lib.units import cm
-from tkinter import messagebox
+from tkinter import messagebox, StringVar
+import threading
 import ttkbootstrap as ttk
 
 
@@ -25,7 +31,18 @@ def generate_key_pair() -> tuple:
     return (private_key.to_string().hex(), public_key.to_string().hex(), address_str)
 
 
-def generate_paperwallet(key_pair: tuple, file_name: str) -> None:
+def find_key_pair_with_prefix(prefix: str, counter_var: StringVar, callback) -> None:
+    counter = 0
+    while True:
+        key_pair = generate_key_pair()
+        counter += 1
+        counter_var.set(f"Total generated: {counter}")
+        if key_pair[2].startswith(prefix):
+            callback(key_pair)
+            break
+
+
+def generate_paperwallet(key_pair: tuple, file_name: str) -> canvas.Canvas:
     pdf = canvas.Canvas(file_name)
 
     qr_address = qrcode.make(key_pair[2])
@@ -47,7 +64,7 @@ def generate_paperwallet(key_pair: tuple, file_name: str) -> None:
     pdf.setDash([2, 2])
     pdf.line(cm, 22.75*cm, 20*cm, 22.75*cm)
 
-    pdf.save()
+    return pdf
 
 
 class XDAGPaperWalletGeneratorUI(ttk.Frame):
@@ -73,12 +90,22 @@ class XDAGPaperWalletGeneratorUI(ttk.Frame):
         self.key_text = ttk.Entry(root, state="readonly", width=38)
         self.key_text.grid(row=3, column=0, padx=5, pady=5)
 
-        ttk.Button(root, text="Save", width=10, command=self.save_as_paper_wallet)\
+        ttk.Button(root, text="Save", width=10, command=self.save_paperwallet)\
             .grid(row=3, column=1, padx=5, pady=5)
+        
+        ttk.Label(root, text="Prefix (optional): ", font=("", 16))\
+            .grid(row=4, column=0, padx=0, pady=0)
+
+        self.prefix_entry = ttk.Entry(root, bootstyle="primary")
+        self.prefix_entry.grid(row=4, column=1, padx=10, pady=10)
+
+        self.counter_var = StringVar()
+        ttk.Label(root, textvariable=self.counter_var, font=("", 12))\
+            .grid(row=5, column=0, padx=5, pady=5)
 
 
-    def generate_key_pair_and_update_screen(self) -> None:
-        self.key_pair = generate_key_pair()
+    def update_key_pair(self, key_pair) -> None:
+        self.key_pair = key_pair
         self.address_text.config(state="normal")
         self.address_text.delete(0, "end")
         self.address_text.insert(0, self.key_pair[2])
@@ -88,15 +115,28 @@ class XDAGPaperWalletGeneratorUI(ttk.Frame):
         self.key_text.insert(0, self.key_pair[0])
         self.key_text.config(state="readonly")
 
+
+    def generate_key_pair_and_update_screen(self) -> None:
+        prefix = self.prefix_entry.get()
+
+        if prefix and match("^[A-HJ-NP-Za-km-z1-9][A-HJ-NP-Za-km-z2-9]{0,32}$", prefix):
+            msg = "The prefix is too long, it might take a long time. Continue?"
+            if len(prefix) <= 4 or messagebox.askquestion(message=msg) == "yes":
+                thread = threading.Thread(target=find_key_pair_with_prefix, \
+                                          args=(prefix, self.counter_var, self.update_key_pair))
+                thread.start()
+        elif prefix:
+            messagebox.showinfo(message="Illegadf prefix")
+        else:
+            self.key_pair = generate_key_pair()
+            self.update_key_pair(self.key_pair)
+
     
-    def save_as_paper_wallet(self):
-        if self.key_pair == None:
+    def save_paperwallet(self) -> None:
+        if self.key_pair is None:
             self.generate_key_pair_and_update_screen()
-        generate_paperwallet(self.key_pair, "XDAG Paper Wallet.pdf")
+        generate_paperwallet(self.key_pair, "XDAG Paper Wallet.pdf").save()
         messagebox.showinfo(message="Save as ./XDAG Paper Wallet.pdf")
-        
-
-
 
 
 def main() -> None:
